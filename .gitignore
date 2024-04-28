@@ -1,9 +1,0 @@
-env/
-db/
-__pycache__/
-application_key.json
-ai-data.json
-caramel-hallway-420109-a4d81cc9289e.json
-
-# Tasks
-*_solution.py
