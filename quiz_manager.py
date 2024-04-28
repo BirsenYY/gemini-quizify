@@ -3,13 +3,13 @@ import os
 import sys
 import json
 sys.path.append(os.path.abspath('../../'))
-from tasks.task_3.task_3 import DocumentProcessor
-from tasks.task_4.task_4 import EmbeddingClient
-from tasks.task_5.task_5 import ChromaCollectionCreator
-from tasks.task_8.task_8 import QuizGenerator
+from document_processor import DocumentProcessor
+from embedding_client import EmbeddingClient
+from chroma_collection_creator import ChromaCollectionCreator
+from generate_quiz import QuizGenerator
 
 class QuizManager:
-    ##########################################################
+    
     def __init__(self, questions: list):
         """
         Task: Initialize the QuizManager class with a list of quiz questions.
@@ -26,9 +26,11 @@ class QuizManager:
 
         Note: This initialization method is crucial for setting the foundation of the `QuizManager` class, enabling it to manage the quiz questions effectively. The class will rely on this setup to perform operations such as retrieving specific questions by index and navigating through the quiz.
         """
-        ##### YOUR CODE HERE #####
-        pass # Placeholder
-    ##########################################################
+        
+        self.questions = questions
+        self.total_questions = len(questions)
+        
+    
 
     def get_question_at_index(self, index: int):
         """
@@ -42,7 +44,7 @@ class QuizManager:
         valid_index = index % self.total_questions
         return self.questions[valid_index]
     
-    ##########################################################
+    
     def next_question_index(self, direction=1):
         """
         Task: Adjust the current quiz question index based on the specified direction.
@@ -61,21 +63,25 @@ class QuizManager:
 
         Note: Ensure that `st.session_state["question_index"]` is initialized before calling this method. This navigation method enhances the user experience by providing fluid access to quiz questions.
         """
-        ##### YOUR CODE HERE #####
-        pass  # Placeholder for implementation
-    ##########################################################
+        current_index = st.session_state["question_index"]
+        current_index += direction
+        current_index =  current_index % self.total_questions
+        st.session_state["question_index"] = current_index
 
 
 # Test Generating the Quiz
 if __name__ == "__main__":
-    
+    if 'question_bank' not in st.session_state:
+        st.session_state.question_bank = None
+        
     embed_config = {
         "model_name": "textembedding-gecko@003",
-        "project": "YOUR-PROJECT-ID-HERE",
-        "location": "us-central1"
+        "project": "your project ID",
+        "location": "your location"
     }
     
     screen = st.empty()
+    
     with screen.container():
         st.header("Quiz Builder")
         processor = DocumentProcessor()
@@ -103,45 +109,42 @@ if __name__ == "__main__":
                 
                 # Test the Quiz Generator
                 generator = QuizGenerator(topic_input, questions, chroma_creator)
-                question_bank = generator.generate_quiz()
+                st.session_state.question_bank = generator.generate_quiz()
+                
 
-    if question_bank:
-        screen.empty()
+    if st.session_state.question_bank:
+        #screen.empty()
         with st.container():
             st.header("Generated Quiz Question: ")
             
-            # Task 9
-            ##########################################################
-            quiz_manager = # Use our new QuizManager class
+
+            
+            quiz_manager = QuizManager(st.session_state.question_bank)# Use our new QuizManager class
             # Format the question and display
             with st.form("Multiple Choice Question"):
-                ##### YOUR CODE HERE #####
-                index_question = # Use the get_question_at_index method to set the 0th index
-                ##### YOUR CODE HERE #####
+                
+                index_question = quiz_manager.get_question_at_index(0) # Use the get_question_at_index method to set the 0th index
                 
                 # Unpack choices for radio
                 choices = []
-                for choice in index_question['choices']: # For loop unpack the data structure
-                    ##### YOUR CODE HERE #####
-                    # Set the key from the index question 
-                    # Set the value from the index question
-                    ##### YOUR CODE HERE #####
-                    choices.append(f"{key}) {value}")
                 
-                ##### YOUR CODE HERE #####
+                for choice in index_question['choices']:
+                    choices.append(choice['value'])
+                    
                 # Display the question onto streamlit
-                ##### YOUR CODE HERE #####
+                st.write(index_question["question"])
                 
-                answer = st.radio( # Display the radio button with the choices
-                    'Choose the correct answer',
-                    choices
-                )
-                st.form_submit_button("Submit")
+                
+                answer = st.radio('Choose the correct answer', choices, key="radio_select", index=None)
+
+                submitted = st.form_submit_button("Submit")
                 
                 if submitted: # On click submit 
                     correct_answer_key = index_question['answer']
-                    if answer.startswith(correct_answer_key): # Check if answer is correct
-                        st.success("Correct!")
-                    else:
-                        st.error("Incorrect!")
-            ##########################################################
+                    for choice in index_question['choices']:
+                        if choice['key'] == correct_answer_key:
+                            if answer == choice['value']:
+                               st.success("Correct!")
+                            else:
+                               st.error("Incorrect!")
+         

@@ -2,8 +2,8 @@ import sys
 import os
 import streamlit as st
 sys.path.append(os.path.abspath('../../'))
-from tasks.task_3.task_3 import DocumentProcessor
-from tasks.task_4.task_4 import EmbeddingClient
+from document_processor import DocumentProcessor
+from embedding_client import EmbeddingClient
 
 
 # Import Task libraries
@@ -48,25 +48,31 @@ class ChromaCollectionCreator:
         Note: Ensure to replace placeholders like [Your code here] with actual implementation code as per the instructions above.
         """
         
-        # Step 1: Check for processed documents
+        # Check for processed documents
         if len(self.processor.pages) == 0:
             st.error("No documents found!", icon="🚨")
             return
 
-        # Step 2: Split documents into text chunks
-        # Use a TextSplitter from Langchain to split the documents into smaller text chunks
-        # https://python.langchain.com/docs/modules/data_connection/document_transformers/character_text_splitter
-        # [Your code here for splitting documents]
+        # Split documents into text chunks
+        splitter = CharacterTextSplitter(separator=" ", chunk_size=1024, chunk_overlap=100)
+        texts = []
+        
+        for page in self.processor.pages:
+            text_chunks = splitter.split_text(page.page_content)
+            for text in text_chunks:
+                doc =  Document(page_content=text, metadata={"source": "local"}) # Assuming 'content' holds the textual data of each page
+                texts.append(doc)  
+
         
         if texts is not None:
             st.success(f"Successfully split pages to {len(texts)} documents!", icon="✅")
 
-        # Step 3: Create the Chroma Collection
-        # https://docs.trychroma.com/
-        # Create a Chroma in-memory client using the text chunks and the embeddings model
-        # [Your code here for creating Chroma collection]
+        # Create the Chroma Collection
+       
+        self.db = Chroma.from_documents(documents=texts, embedding=self.embed_model)
         
         if self.db:
+            
             st.success("Successfully created Chroma Collection!", icon="✅")
         else:
             st.error("Failed to create Chroma Collection!", icon="🚨")
@@ -93,8 +99,8 @@ if __name__ == "__main__":
     
     embed_config = {
         "model_name": "textembedding-gecko@003",
-        "project": "YOUR PROJECT ID HERE",
-        "location": "us-central1"
+        "project": "your project ID",
+        "location": "your location"
     }
     
     embed_client = EmbeddingClient(**embed_config) # Initialize from Task 4

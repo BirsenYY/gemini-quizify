@@ -4,6 +4,9 @@ from langchain_core.prompts import PromptTemplate
 import os
 import sys
 sys.path.append(os.path.abspath('../../'))
+from document_processor import DocumentProcessor
+from embedding_client import EmbeddingClient
+from chroma_collection_creator import ChromaCollectionCreator
 
 class QuizGenerator:
     def __init__(self, topic=None, num_questions=1, vectorstore=None):
@@ -70,9 +73,14 @@ class QuizGenerator:
 
         Note: Ensure you have appropriate access or API keys if required by the model or platform.
         """
-        self.llm = VertexAI(
-            ############# YOUR CODE HERE ############
-        )
+        try:
+            self.llm = VertexAI(
+                      model_name="gemini-pro",
+                      temperature=0.7,
+                      max_output_tokens=150
+             )
+        except Exception as e:
+            print("Failed to initialize VertexAI:", e)
         
     def generate_question_with_vectorstore(self):
         """
@@ -99,33 +107,39 @@ class QuizGenerator:
 
         Note: Handle cases where the vectorstore is not provided by raising a ValueError.
         """
-        ############# YOUR CODE HERE ############
-        # Initialize the LLM from the 'init_llm' method if not already initialized
-        # Raise an error if the vectorstore is not initialized on the class
-        ############# YOUR CODE HERE ############
+        
+        self.init_llm()  # Assuming init_llm() initializes self.llm properly
+        if not self.llm:
+            raise Exception("Failed to initialize llm")
+        if not self.vectorstore:
+           raise ValueError("Vectorstore is not initialized")
         
         from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 
-        ############# YOUR CODE HERE ############
-        # Enable a Retriever using the as_retriever() method on the VectorStore object
-        # HINT: Use the vectorstore as the retriever initialized on the class
-        ############# YOUR CODE HERE ############
-        
-        ############# YOUR CODE HERE ############
-        # Use the system template to create a PromptTemplate
-        # HINT: Use the .from_template method on the PromptTemplate class and pass in the system template
-        ############# YOUR CODE HERE ############
+        retriever = self.vectorstore.db.as_retriever()
+        if not retriever:
+           raise Exception("Failed to initialize the retriever")
+
+
+        system_template = "Generate a question based on the topic: {topic} and the context: {context}"
+        prompt_template = PromptTemplate.from_template(system_template)
+        if not prompt_template:
+            raise Exception("Failed to initialize the prompt_template")
+    
         
         # RunnableParallel allows Retriever to get relevant documents
         # RunnablePassthrough allows chain.invoke to send self.topic to LLM
         setup_and_retrieval = RunnableParallel(
             {"context": retriever, "topic": RunnablePassthrough()}
         )
-        
-        ############# YOUR CODE HERE ############
-        # Create a chain with the Retriever, PromptTemplate, and LLM
-        # HINT: chain = RETRIEVER | PROMPT | LLM 
-        ############# YOUR CODE HERE ############
+        if not setup_and_retrieval:
+           raise Exception("Failed to initialize the setup_and_retrieval")
+       
+        # Create a chain with the Retriever, PromptTemplate, and LLM 
+        chain = setup_and_retrieval | prompt_template | self.llm
+        if not chain:
+           raise Exception("Failed to initialize the chain")
+       
 
         # Invoke the chain with the topic as input
         response = chain.invoke(self.topic)
@@ -134,15 +148,13 @@ class QuizGenerator:
 # Test the Object
 if __name__ == "__main__":
     
-    from tasks.task_3.task_3 import DocumentProcessor
-    from tasks.task_4.task_4 import EmbeddingClient
-    from tasks.task_5.task_5 import ChromaCollectionCreator
+
     
     
     embed_config = {
-        "model_name": "textembedding-gecko@003",
-        "project": "YOUR-PROJECT-ID-HERE",
-        "location": "us-central1"
+        "model_name": "textembedding-gecko@003",    
+        "project": "your project ID",
+        "location": "your location"
     }
     
     screen = st.empty()
@@ -175,7 +187,7 @@ if __name__ == "__main__":
                 question = generator.generate_question_with_vectorstore()
 
     if question:
-        screen.empty()
+        #screen.empty()
         with st.container():
             st.header("Generated Quiz Question: ")
             st.write(question)

@@ -3,9 +3,9 @@ import os
 import sys
 import json
 sys.path.append(os.path.abspath('../../'))
-from tasks.task_3.task_3 import DocumentProcessor
-from tasks.task_4.task_4 import EmbeddingClient
-from tasks.task_5.task_5 import ChromaCollectionCreator
+from document_processor import DocumentProcessor
+from embedding_client import EmbeddingClient
+from chroma_collection_creator import ChromaCollectionCreator
 
 from langchain_core.prompts import PromptTemplate
 from langchain_google_vertexai import VertexAI
@@ -86,7 +86,7 @@ class QuizGenerator:
         from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 
         # Enable a Retriever
-        retriever = self.vectorstore.as_retriever()
+        retriever = self.vectorstore.db.as_retriever()
         
         # Use the system template to create a PromptTemplate
         prompt = PromptTemplate.from_template(self.system_template)
@@ -124,25 +124,26 @@ class QuizGenerator:
         self.question_bank = [] # Reset the question bank
 
         for _ in range(self.num_questions):
-            ##### YOUR CODE HERE #####
-            question_str = # Use class method to generate question
-            
-            ##### YOUR CODE HERE #####
-            try:
-                # Convert the JSON String to a dictionary
-            except json.JSONDecodeError:
-                print("Failed to decode question JSON.")
-                continue  # Skip this iteration if JSON decoding fails
-            ##### YOUR CODE HERE #####
+            for _ in range(0,10): #  Try maximum 10 times when the json string could not be converted to a dictionary.
+                question_str = self.generate_question_with_vectorstore() # Use class method to generate question
+                
+                try:
+                    question = json.loads(question_str) # Convert the JSON String to a dictionary
+                    
+                except json.JSONDecodeError:
+                    print("Failed to decode question JSON.")
+                    continue  # Skip this iteration if JSON decoding fails
 
-            ##### YOUR CODE HERE #####
-            # Validate the question using the validate_question method
-            if self.validate_question(question):
-                print("Successfully generated unique question")
-                # Add the valid and unique question to the bank
-            else:
-                print("Duplicate or invalid question detected.")
-            ##### YOUR CODE HERE #####
+                # Validate the question using the validate_question method
+                if question and self.validate_question(question):
+                    print("Successfully generated unique question")
+                    self.question_bank.append(question)# Add the valid and unique question to the bank
+                    break
+                else:
+                    print("Duplicate or invalid question detected.")
+                    continue
+            
+        
 
         return self.question_bank
 
@@ -166,10 +167,16 @@ class QuizGenerator:
 
         Note: This method assumes `question` is a valid dictionary and `question_bank` has been properly initialized.
         """
-        ##### YOUR CODE HERE #####
-        # Consider missing 'question' key as invalid in the dict object
-        # Check if a question with the same text already exists in the self.question_bank
-        ##### YOUR CODE HERE #####
+        
+        is_unique = True
+        question_text = question['question']
+        if not question_text:
+            is_unique = False
+        else:
+            for dictionary in self.question_bank:
+                if dictionary['question'] == question_text:
+                   is_unique =  False
+        
         return is_unique
 
 
@@ -177,9 +184,9 @@ class QuizGenerator:
 if __name__ == "__main__":
     
     embed_config = {
-        "model_name": "textembedding-gecko@003",
-        "project": "YOUR-PROJECT-ID-HERE",
-        "location": "us-central1"
+        "model_name": "textembedding-gecko@003",    
+        "project": "your project ID",
+        "location": "your location"
     }
     
     screen = st.empty()
@@ -216,6 +223,6 @@ if __name__ == "__main__":
     if question_bank:
         screen.empty()
         with st.container():
-            st.header("Generated Quiz Question: ")
+            st.header("Generated Quiz Questions: ")
             for question in question_bank:
-                st.write(question)
+                st.write(question['question'])
